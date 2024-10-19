@@ -1,4 +1,6 @@
 #include <Arduino_LSM6DS3.h>
+#include <Wire.h>  // Include the Wire library for I2C communication.
+// #include <PulsePosition.h>  // Need to use "Teensy" H/W
 float GyroX, GyroY, GyroZ;
 float AccX, AccY, AccZ;
 float AngleRoll, AnglePitch;
@@ -15,41 +17,39 @@ float AccZInertial;
 float VelocityVertical;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(9600);   // initialze the serial comm between microcontroller and a connected device at a baud rate of 9600 bps
   while (!Serial);
 
-  if (!IMU.begin()) {
+  if (!IMU.begin()) { // Initialize the IMU
     Serial.println("Failed to initialize IMU!");
-
     while (1);
   }
-
   Rate_calibration();
   LoopTimer=micros(); // start the timer
 }
 
 void loop() {  
-  gyro_signals(); // roll and pitch angles by accel
+  read_accel();
+  angle_by_accel(); // roll and pitch angles by accel
   calibrated_rate(); // roll, pitch, yaw rate
-  // Start of the iteration for the Kalman filter with the roll and pitch angles
-  kalman_1d(KalmanAngleRoll, KalmanUncertaintyAngleRoll, RateRoll, AngleRoll);
-  KalmanAngleRoll=Kalman1DOutput[0];
-  KalmanUncertaintyAngleRoll=Kalman1DOutput[1];
-  kalman_1d(KalmanAnglePitch, KalmanUncertaintyAnglePitch, RatePitch, AnglePitch);
-  KalmanAnglePitch=Kalman1DOutput[0];
-  KalmanUncertaintyAnglePitch=Kalman1DOutput[1];
+  // kalman_1d(KalmanAngleRoll, KalmanUncertaintyAngleRoll, RateRoll, AngleRoll);  // Start of the iteration for the Kalman filter with the roll and pitch angles
+  // KalmanAngleRoll=Kalman1DOutput[0];
+  // KalmanUncertaintyAngleRoll=Kalman1DOutput[1];
+  // kalman_1d(KalmanAnglePitch, KalmanUncertaintyAnglePitch, RatePitch, AnglePitch);
+  // KalmanAnglePitch=Kalman1DOutput[0];
+  // KalmanUncertaintyAnglePitch=Kalman1DOutput[1];
   // Serial.print("Roll Angle [deg] ");
   // Serial.print(KalmanAngleRoll);
   // Serial.print(" Pitch Angle [deg] ");
-  // Serial.print(KalmanAnglePitch);
-  // Calculate the acceleration in the inertial Z axis
-  AccZInertial = -sin(KalmanAnglePitch*(3.142/180))*AccX
-  + cos(KalmanAnglePitch*(3.142/180))*sin(KalmanAngleRoll*(3.142/180))*AccY
-  + cos(KalmanAnglePitch*(3.142/180))*cos(KalmanAngleRoll*(3.142/180))*AccZ;
-  AccZInertial = (AccZInertial -1)*9.81*100; // Convert the acceleration[g] to [cm/s2]
-  VelocityVertical = VelocityVertical + AccZInertial*0.004; // Calculate the vertical velocity
-  Serial.print("Vertical Velocity [cm/s]: ");
-  Serial.println(VelocityVertical);
+  // Serial.println(KalmanAnglePitch);
+  // // Calculate the acceleration in the inertial Z axis
+  // AccZInertial = -sin(KalmanAnglePitch*(3.142/180))*AccX
+  // + cos(KalmanAnglePitch*(3.142/180))*sin(KalmanAngleRoll*(3.142/180))*AccY
+  // + cos(KalmanAnglePitch*(3.142/180))*cos(KalmanAngleRoll*(3.142/180))*AccZ;
+  // AccZInertial = (AccZInertial -1)*9.81*100; // Convert the acceleration[g] to [cm/s2]
+  // VelocityVertical = VelocityVertical + AccZInertial*0.004; // Calculate the vertical velocity
+  // Serial.print("Vertical Velocity [cm/s]: ");
+  // Serial.println(VelocityVertical);
   while(micros() - LoopTimer < 4000); // Finish the 250Hz control loop
   LoopTimer=micros();
   // Save KalmanAngleRoll and KalmanAnglePitch values to txt files
